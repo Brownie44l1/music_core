@@ -15,7 +15,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: music_core_redis
@@ -26,7 +25,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
   ml:
     build:
       context: ./ml
@@ -44,7 +42,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
-
   backend:
     build:
       context: ./backend
