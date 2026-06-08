@@ -1,0 +1,11 @@
+__pycache__/
+.venv/
+.env
+.DS_Store
+*.pkl
+*.joblib
+node_modules/
+.next/
+dist/
+build/
+uv.lock

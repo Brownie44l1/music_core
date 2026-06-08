@@ -1,0 +1,18 @@
+line-length = 88
+target-version = "py311"
+indent-width = 4
+
+[lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",
+    "B008",
+]
+
+[lint.isort]
+known-first-party = ["app"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
