@@ -1,39 +1,26 @@
-# ─── Build stage ──────────────────────────────────────────────
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install build dependencies for scikit-surprise
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-WORKDIR /app
-
-# Copy dependency files first (better layer caching)
+# Copy dependency file
 COPY pyproject.toml .
 
-# Install dependencies into a virtual environment
-RUN uv venv .venv && \
-    uv pip install --system -r pyproject.toml 2>/dev/null || \
-    uv pip install .
+# Install dependencies
+RUN uv pip install --system --no-cache -e .
 
-# ─── Runtime stage ────────────────────────────────────────────
-FROM python:3.11-slim AS runtime
-
-WORKDIR /app
-
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
-# Copy application code
+# Copy application code and model
 COPY app/ ./app/
-COPY .env.example .env.example
 
-# Render.com injects PORT env var — default to 8001 locally
 ENV PORT=8001
 EXPOSE $PORT
 
-# Non-root user for security
-RUN adduser --disabled-password --gecos "" appuser && \
-    chown -R appuser:appuser /app
-USER appuser
-
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port $PORT --reload"]
