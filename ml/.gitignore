@@ -5,21 +5,35 @@ __pycache__/
 venv/
 .env
 .env.local
+
+# Raw and synthetic data — never commit
 data/raw/*
-data/processed/*
 data/synthetic/*
 !data/raw/.gitkeep
-!data/processed/.gitkeep
 !data/synthetic/.gitkeep
+
+# Processed data — allow specific files
+data/processed/*
+!data/processed/.gitkeep
+!data/processed/combined_interactions.csv
+
+# Seeds — always allow
 !data/seeds/
-app/models/*.pkl
-app/models/*.joblib
-*.pkl
-*.joblib
+
+# Models — allow specific files
+app/models/*
+!app/models/.gitkeep
+!app/models/svd_model.pkl
+
+# OS
 .DS_Store
 Thumbs.db
+
+# Editor
 .vscode/
 .idea/
+
+# Tools
 .ruff_cache/
 .pytest_cache/
 .ipynb_checkpoints/

@@ -2,14 +2,14 @@
 music_core ML Engine
 ────────────────────
 FastAPI application entry point.
-This service exposes the recommendation model via HTTP.
-The backend service calls this internally.
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import recommend
+from app.services.model_service import _recommender
+from app.recommender import MODEL_PATH
 
 app = FastAPI(
     title="music_core ML Engine",
@@ -18,19 +18,30 @@ app = FastAPI(
     docs_url="/docs",
 )
 
-# CORS — only the backend service should call this
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten this in production
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routers
 app.include_router(recommend.router, prefix="/ml", tags=["recommendations"])
+
+
+@app.on_event("startup")
+async def load_model() -> None:
+    """Load the trained SVD model on startup."""
+    try:
+        _recommender.load(MODEL_PATH)
+        print(f"✅ SVD model loaded from {MODEL_PATH}")
+    except FileNotFoundError:
+        print(f"⚠️  No model found at {MODEL_PATH} — cold start only mode")
 
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict:
-    """Basic health check. Render.com uses this to verify the service is up."""
-    return {"status": "ok", "service": "music_core_ml"}
+    return {
+        "status": "ok",
+        "service": "music_core_ml",
+        "model_loaded": _recommender.is_trained,
+    }
