@@ -63,7 +63,7 @@ class ModelService:
 
         scored = _recommender.recommend(session_id, candidate_ids, limit=limit)
 
-        # Normalise scores to [0, 1] — SVD raw predictions can exceed 1.0\
+        # Normalise scores to [0, 1] — SVD raw predictions can exceed 1.0
         if scored:
             min_score = min(s for _, s in scored)
             max_score = max(s for _, s in scored)
@@ -216,9 +216,32 @@ class ModelService:
 
     async def _fetch_similar_users(self, session_id: str) -> list[str]:
         """
-        Find users who have liked the same songs as this session.
-        Simple co-like approach until ticket 2.3 implements SVD neighbours.
+        Ticket 2.3: Find users with similar taste using SVD latent space
+        cosine similarity. Falls back to co-like query for new users not
+        yet in the trainset.
         """
+        # ── Attempt SVD nearest neighbours ───────────────────────────
+        with SessionLocal() as db:
+            all_users = db.execute(
+                text("SELECT session_id FROM users WHERE session_id != :sid"),
+                {"sid": session_id},
+            ).fetchall()
+
+        all_user_ids = [row.session_id for row in all_users]
+        svd_neighbours = _recommender.find_similar_users(
+            user_id=session_id,
+            all_user_ids=all_user_ids,
+            limit=5,
+        )
+
+        if svd_neighbours:
+            logger.debug(
+                "SVD neighbours for %s: %s", session_id, svd_neighbours
+            )
+            return svd_neighbours
+
+        # ── Fallback: co-like query for users not in trainset ─────────
+        logger.debug("Falling back to co-like for %s", session_id)
         with SessionLocal() as db:
             rows = db.execute(
                 text("""
