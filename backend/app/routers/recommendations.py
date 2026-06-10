@@ -2,7 +2,7 @@ import json
 import logging
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.cache import get_cache
 from app.schemas.recommendations import RecommendationResponse
@@ -16,7 +16,7 @@ CACHE_TTL = 300  # 5 minutes
 @router.get("/recommendations", response_model=RecommendationResponse)
 async def get_recommendations(
     session_id: str,
-    limit: int = 10,
+    limit: int = Query(default=10, ge=1, le=50),
     cache=Depends(get_cache),
 ) -> RecommendationResponse:
     """
