@@ -40,10 +40,15 @@ async def submit_feedback(
     # ── Get or create user ────────────────────────────────────────────
     user = db.query(User).filter(User.session_id == body.session_id).first()
     if not user:
-        user = User(session_id=body.session_id)
-        db.add(user)
-        db.flush()
-        logger.info("Created new user for session %s", body.session_id)
+        from sqlalchemy.exc import IntegrityError
+        try:
+            with db.begin_nested():
+                user = User(session_id=body.session_id)
+                db.add(user)
+            db.flush()
+            logger.info("Created new user for session %s", body.session_id)
+        except IntegrityError:
+            user = db.query(User).filter(User.session_id == body.session_id).first()
 
     # ── Write feedback ────────────────────────────────────────────────
     feedback = UserFeedback(
