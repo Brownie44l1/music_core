@@ -29,7 +29,12 @@ async def submit_feedback(
     """
     # ── Look up song by deezer_track_id ───────────────────────────────
     # song_id from frontend is the Deezer string ID e.g. "ng_2504834531"
-    deezer_id = body.song_id.replace("ng_", "")
+    if not body.song_id.startswith("ng_"):
+        raise HTTPException(
+            status_code=400,
+            detail="song_id must start with the 'ng_' prefix",
+        )
+    deezer_id = body.song_id.removeprefix("ng_")
     song = db.query(Song).filter(Song.deezer_track_id == deezer_id).first()
     if not song:
         raise HTTPException(
