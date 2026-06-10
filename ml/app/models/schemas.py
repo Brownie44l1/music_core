@@ -35,6 +35,7 @@ class Explanation(BaseModel):
 class RecommendedSong(BaseModel):
     """A single recommended song with its explanation."""
 
+    recommendation_id: str
     song_id: str
     title: str
     artist: str
