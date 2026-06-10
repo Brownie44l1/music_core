@@ -15,7 +15,7 @@ CACHE_TTL = 300  # 5 minutes
 
 @router.get("/recommendations", response_model=RecommendationResponse)
 async def get_recommendations(
-    session_id: str,
+    session_id: str = Query(..., min_length=1, max_length=255),
     limit: int = Query(default=10, ge=1, le=50),
     cache=Depends(get_cache),
 ) -> RecommendationResponse:

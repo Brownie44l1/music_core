@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class FeedbackRequest(BaseModel):
-    session_id: str = Field(..., description="Browser session identifier")
+    session_id: str = Field(..., min_length=1, max_length=255, description="Browser session identifier")
     song_id: str = Field(..., description="Song identifier")
     feedback_type: Literal["like", "dislike", "skip"] = Field(
         ..., description="'like', 'dislike', or 'skip'",
