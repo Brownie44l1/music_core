@@ -26,6 +26,13 @@ async def explain_recommendation(
     Song and Artist data.
     """
     # ── Parse and validate the UUID ───────────────────────────────────
+    import re
+    UUID_REGEX = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+    if not UUID_REGEX.match(recommendation_id):
+        raise HTTPException(
+            status_code=400,
+            detail=f"'{recommendation_id}' is not in a valid standard hyphenated UUID format",
+        )
     try:
         rec_uuid = uuid.UUID(recommendation_id)
     except ValueError:
