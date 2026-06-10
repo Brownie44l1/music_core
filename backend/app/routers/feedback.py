@@ -68,7 +68,9 @@ async def submit_feedback(
 
     # ── Invalidate Redis cache ────────────────────────────────────────
     try:
-        pattern = f"recommendations:{body.session_id}:*"
+        import re
+        escaped_session_id = re.sub(r'([*?\[\]\\])', r'\\\1', body.session_id)
+        pattern = f"recommendations:{escaped_session_id}:*"
         keys = await cache.keys(pattern)
         if keys:
             await cache.delete(*keys)
