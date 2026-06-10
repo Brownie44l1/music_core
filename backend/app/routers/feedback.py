@@ -27,12 +27,6 @@ async def submit_feedback(
     - Writes feedback to PostgreSQL
     - Invalidates Redis cache so next recs reflect the feedback
     """
-    if body.feedback_type not in {"like", "dislike", "skip"}:
-        raise HTTPException(
-            status_code=400,
-            detail="feedback_type must be 'like', 'dislike', or 'skip'",
-        )
-
     # ── Look up song by deezer_track_id ───────────────────────────────
     # song_id from frontend is the Deezer string ID e.g. "ng_2504834531"
     deezer_id = body.song_id.replace("ng_", "")
