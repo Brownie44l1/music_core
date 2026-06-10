@@ -117,6 +117,63 @@ class MusicRecommender:
         predictions.sort(key=lambda x: x[1], reverse=True)
         return predictions[:limit]
 
+
+    def find_similar_users(
+        self,
+        user_id: str,
+        all_user_ids: list[str],
+        limit: int = 5,
+    ) -> list[str]:
+        """
+        Find users with the most similar taste using cosine similarity
+        on SVD latent factor vectors (ticket 2.3).
+
+        If the user is not in the trainset (new user), returns an empty
+        list so the caller can fall back to the co-like query.
+
+        Args:
+            user_id:      Session ID of the target user.
+            all_user_ids: All known session IDs to compare against.
+            limit:        Number of similar users to return.
+
+        Returns:
+            List of session_ids sorted by similarity descending.
+        """
+        if not self.is_trained:
+            return []
+
+        import numpy as np
+
+        trainset = self.model.trainset
+
+        try:
+            inner_uid = trainset.to_inner_uid(user_id)
+        except ValueError:
+            logger.debug("User %s not in trainset — skipping SVD neighbours", user_id)
+            return []
+
+        target_vector = self.model.pu[inner_uid]
+        target_norm = np.linalg.norm(target_vector) or 1.0
+
+        similarities: list[tuple[str, float]] = []
+        for other_id in all_user_ids:
+            if other_id == user_id:
+                continue
+            try:
+                other_inner = trainset.to_inner_uid(other_id)
+            except ValueError:
+                continue
+
+            other_vector = self.model.pu[other_inner]
+            other_norm = np.linalg.norm(other_vector) or 1.0
+            cosine_sim = float(
+                np.dot(target_vector, other_vector) / (target_norm * other_norm)
+            )
+            similarities.append((other_id, cosine_sim))
+
+        similarities.sort(key=lambda x: x[1], reverse=True)
+        return [uid for uid, _ in similarities[:limit]]
+
     def save(self, path: Path = MODEL_PATH) -> None:
         """Persist trained model to disk."""
         path.parent.mkdir(parents=True, exist_ok=True)
