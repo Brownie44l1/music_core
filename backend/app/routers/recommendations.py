@@ -10,7 +10,7 @@ from app.schemas.recommendations import RecommendationResponse
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-CACHE_TTL = 300  # 5 minutes
+CACHE_TTL = 3600  # 1 hour (as documented in TRD section 5.2)
 
 
 @router.get("/recommendations", response_model=RecommendationResponse)
