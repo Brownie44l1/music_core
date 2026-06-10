@@ -56,12 +56,22 @@ async def submit_feedback(
             user = db.query(User).filter(User.session_id == body.session_id).first()
 
     # ── Write feedback ────────────────────────────────────────────────
-    feedback = UserFeedback(
-        user_id=user.id,
-        song_id=song.id,
-        feedback_type=body.feedback_type,
-    )
-    db.add(feedback)
+    feedback = db.query(UserFeedback).filter(
+        UserFeedback.user_id == user.id,
+        UserFeedback.song_id == song.id
+    ).first()
+
+    if feedback:
+        feedback.feedback_type = body.feedback_type
+        logger.info("Feedback updated for user %s on song %s", user.id, song.id)
+    else:
+        feedback = UserFeedback(
+            user_id=user.id,
+            song_id=song.id,
+            feedback_type=body.feedback_type,
+        )
+        db.add(feedback)
+        logger.info("Feedback created for user %s on song %s", user.id, song.id)
     db.commit()
     logger.info(
         "Feedback recorded: session=%s song=%s type=%s",
