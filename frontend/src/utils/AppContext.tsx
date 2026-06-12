@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import type { Screen, Song, DrawerSong } from '../types';
 import { DRAWER_SONG } from '../data';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
 
 // Helper to generate or retrieve a stable, random session ID
 function getOrCreateSessionId(): string {
