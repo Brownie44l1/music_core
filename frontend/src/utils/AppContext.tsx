@@ -4,6 +4,12 @@ import { DRAWER_SONG } from '../data';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
 
+async function apiFetch(url: string, options: RequestInit = {}) {
+  const headers = new Headers(options.headers || {});
+  headers.append('ngrok-skip-browser-warning', 'true');
+  return fetch(url, { ...options, headers });
+}
+
 // Helper to generate or retrieve a stable, random session ID
 function getOrCreateSessionId(): string {
   let sid = localStorage.getItem('plugd_session_id');
@@ -141,7 +147,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const openDrawerForRecommendation = async (recommendationId: string, songObj: Song) => {
     setDrawerSongObj(songObj);
     try {
-      const res = await fetch(`${API_BASE}/explain?recommendation_id=${recommendationId}`);
+      const res = await apiFetch(`${API_BASE}/explain?recommendation_id=${recommendationId}`);
       if (!res.ok) throw new Error('Failed to fetch explanation');
       const data = await res.json();
       
@@ -195,7 +201,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fetchRecommendations = async () => {
     setLoadingRecs(true);
     try {
-      const res = await fetch(`${API_BASE}/recommendations?session_id=${sessionId}&limit=6`);
+      const res = await apiFetch(`${API_BASE}/recommendations?session_id=${sessionId}&limit=6`);
       if (!res.ok) throw new Error('Failed to fetch recommendations');
       const data = await res.json();
       
@@ -226,7 +232,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoadingPopular(true);
     try {
       const genreParam = genre && genre !== 'All' ? `?genre=${encodeURIComponent(genre)}` : '';
-      const res = await fetch(`${API_BASE}/songs${genreParam}`);
+      const res = await apiFetch(`${API_BASE}/songs${genreParam}`);
       if (!res.ok) throw new Error('Failed to fetch songs');
       const data = await res.json();
       
@@ -258,7 +264,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     setSubmittingFeedback(prev => ({ ...prev, [key]: true }));
     try {
-      const res = await fetch(`${API_BASE}/feedback`, {
+      const res = await apiFetch(`${API_BASE}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -281,7 +287,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const completeOnboarding = async (genres: Set<string>, artist: string) => {
     try {
       // Find up to 50 popular songs first
-      const res = await fetch(`${API_BASE}/songs?page_size=50`);
+      const res = await apiFetch(`${API_BASE}/songs?page_size=50`);
       if (res.ok) {
         const data = await res.json();
         const candidateSongs = data.songs;
@@ -294,7 +300,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         // Submit "like" feedback for these matches
         for (const s of matches) {
-          await fetch(`${API_BASE}/feedback`, {
+          await apiFetch(`${API_BASE}/feedback`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
