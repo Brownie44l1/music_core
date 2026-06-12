@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:password@postgres:5432/music_core",
+    "postgresql://postgres:password@postgres:5432/plugd",
 )
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)

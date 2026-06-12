@@ -37,4 +37,3 @@ Thumbs.db
 .ruff_cache/
 .pytest_cache/
 .ipynb_checkpoints/
-uv.lock

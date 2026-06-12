@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 class RecommendationRequest(BaseModel):
     """Request body for generating recommendations."""
 
-    session_id: str = Field(..., description="Browser session identifier")
+    session_id: str = Field(..., min_length=1, max_length=255, description="Browser session identifier")
     limit: int = Field(default=10, ge=1, le=50, description="Number of recommendations")
 
     model_config = {"json_schema_extra": {"example": {"session_id": "abc-123", "limit": 10}}}
@@ -35,6 +35,7 @@ class Explanation(BaseModel):
 class RecommendedSong(BaseModel):
     """A single recommended song with its explanation."""
 
+    recommendation_id: str
     song_id: str
     title: str
     artist: str

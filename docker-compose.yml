@@ -1,15 +1,15 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: music_core_postgres
+    container_name: plugd_postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: music_core
+      POSTGRES_DB: plugd
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - plugd_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -17,9 +17,9 @@ services:
       retries: 5
   redis:
     image: redis:7-alpine
-    container_name: music_core_redis
+    container_name: plugd_redis
     ports:
-      - "6379:6379"
+      - "6385:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -29,7 +29,7 @@ services:
     build:
       context: ./ml
       dockerfile: Dockerfile
-    container_name: music_core_ml
+    container_name: plugd_ml
     ports:
       - "8001:8001"
     volumes:
@@ -46,7 +46,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: music_core_backend
+    container_name: plugd_backend
     env_file:
       - ./backend/.env
     ports:
@@ -63,4 +63,4 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 volumes:
-  postgres_data:
+  plugd_data:

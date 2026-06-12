@@ -5,7 +5,7 @@ Delete this file after ticket 3.4 is verified.
 import os, uuid
 from sqlalchemy import create_engine, text
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/music_core")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/plugd")
 engine = create_engine(DATABASE_URL)
 
 SONG_DEEZER_ID = "4015341011"  # Burna Boy — Dai Dai

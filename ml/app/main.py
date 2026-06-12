@@ -1,5 +1,5 @@
 """
-music_core ML Engine
+plugd ML Engine
 ────────────────────
 FastAPI application entry point.
 """
@@ -12,7 +12,7 @@ from app.services.model_service import _recommender
 from app.recommender import MODEL_PATH
 
 app = FastAPI(
-    title="music_core ML Engine",
+    title="plugd ML Engine",
     description="Collaborative filtering recommendation engine for Nigerian music",
     version="0.1.0",
     docs_url="/docs",
@@ -42,6 +42,6 @@ async def load_model() -> None:
 async def health_check() -> dict:
     return {
         "status": "ok",
-        "service": "music_core_ml",
+        "service": "plugd_ml",
         "model_loaded": _recommender.is_trained,
     }

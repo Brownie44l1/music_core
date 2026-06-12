@@ -8,7 +8,7 @@ from app.db import engine, Base
 from app.models import user, user_feedback, song, artist, recommendation, listening_event  # noqa: F401
 
 app = FastAPI(
-    title="music_core Backend API",
+    title="plugd Backend API",
     description="API layer for the Nigerian music recommendation system",
     version="0.1.0",
     docs_url="/docs",
@@ -36,4 +36,4 @@ async def create_tables() -> None:
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict:
-    return {"status": "ok", "service": "music_core_backend"}
+    return {"status": "ok", "service": "plugd_backend"}

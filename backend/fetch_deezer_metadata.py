@@ -18,7 +18,7 @@ from sqlalchemy import create_engine, text
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:password@localhost:5432/music_core",
+    "postgresql://postgres:password@localhost:5432/plugd",
 )
 
 DEEZER_API = "https://api.deezer.com/track/{track_id}"

@@ -27,15 +27,14 @@ async def submit_feedback(
     - Writes feedback to PostgreSQL
     - Invalidates Redis cache so next recs reflect the feedback
     """
-    if body.feedback_type not in {"like", "dislike", "skip"}:
-        raise HTTPException(
-            status_code=400,
-            detail="feedback_type must be 'like', 'dislike', or 'skip'",
-        )
-
     # ── Look up song by deezer_track_id ───────────────────────────────
     # song_id from frontend is the Deezer string ID e.g. "ng_2504834531"
-    deezer_id = body.song_id.replace("ng_", "")
+    if not body.song_id.startswith("ng_"):
+        raise HTTPException(
+            status_code=400,
+            detail="song_id must start with the 'ng_' prefix",
+        )
+    deezer_id = body.song_id.removeprefix("ng_")
     song = db.query(Song).filter(Song.deezer_track_id == deezer_id).first()
     if not song:
         raise HTTPException(
@@ -46,18 +45,33 @@ async def submit_feedback(
     # ── Get or create user ────────────────────────────────────────────
     user = db.query(User).filter(User.session_id == body.session_id).first()
     if not user:
-        user = User(session_id=body.session_id)
-        db.add(user)
-        db.flush()
-        logger.info("Created new user for session %s", body.session_id)
+        from sqlalchemy.exc import IntegrityError
+        try:
+            with db.begin_nested():
+                user = User(session_id=body.session_id)
+                db.add(user)
+            db.flush()
+            logger.info("Created new user for session %s", body.session_id)
+        except IntegrityError:
+            user = db.query(User).filter(User.session_id == body.session_id).first()
 
     # ── Write feedback ────────────────────────────────────────────────
-    feedback = UserFeedback(
-        user_id=user.id,
-        song_id=song.id,
-        feedback_type=body.feedback_type,
-    )
-    db.add(feedback)
+    feedback = db.query(UserFeedback).filter(
+        UserFeedback.user_id == user.id,
+        UserFeedback.song_id == song.id
+    ).first()
+
+    if feedback:
+        feedback.feedback_type = body.feedback_type
+        logger.info("Feedback updated for user %s on song %s", user.id, song.id)
+    else:
+        feedback = UserFeedback(
+            user_id=user.id,
+            song_id=song.id,
+            feedback_type=body.feedback_type,
+        )
+        db.add(feedback)
+        logger.info("Feedback created for user %s on song %s", user.id, song.id)
     db.commit()
     logger.info(
         "Feedback recorded: session=%s song=%s type=%s",
@@ -68,7 +82,9 @@ async def submit_feedback(
 
     # ── Invalidate Redis cache ────────────────────────────────────────
     try:
-        pattern = f"recommendations:{body.session_id}:*"
+        import re
+        escaped_session_id = re.sub(r'([*?\[\]\\])', r'\\\1', body.session_id)
+        pattern = f"recommendations:{escaped_session_id}:*"
         keys = await cache.keys(pattern)
         if keys:
             await cache.delete(*keys)

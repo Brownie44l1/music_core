@@ -44,6 +44,27 @@ class ModelService:
         session_id: str,
         limit: int = 10,
     ) -> RecommendationResponse:
+        import uuid
+        # ── Ensure user exists in database ──────────────────────────────────
+        with SessionLocal() as db:
+            user_row = db.execute(
+                text("SELECT id FROM users WHERE session_id = :session_id"),
+                {"session_id": session_id}
+            ).fetchone()
+            if not user_row:
+                user_uuid = uuid.uuid4()
+                db.execute(
+                    text("INSERT INTO users (id, session_id, onboarding_done, created_at) VALUES (:id, :session_id, false, NOW()) ON CONFLICT (session_id) DO NOTHING"),
+                    {"id": str(user_uuid), "session_id": session_id}
+                )
+                db.commit()
+                # Re-fetch user ID to handle concurrency cleanly
+                user_row = db.execute(
+                    text("SELECT id FROM users WHERE session_id = :session_id"),
+                    {"session_id": session_id}
+                ).fetchone()
+            user_id = user_row[0]
+
         interactions = await self._fetch_interactions(session_id)
         interaction_count = len(interactions)
 
@@ -55,7 +76,7 @@ class ModelService:
             )
             songs = await self._fetch_popular_songs()
             fallback_songs = get_cold_start_recommendations(songs, limit=limit)
-            return self._build_cold_start_response(session_id, fallback_songs)
+            return await self._build_cold_start_response(session_id, user_id, fallback_songs)
 
         candidate_songs = await self._fetch_candidate_songs(session_id)
         candidate_ids = [s["id"] for s in candidate_songs]
@@ -74,32 +95,54 @@ class ModelService:
         similar_users = await self._fetch_similar_users(session_id)
 
         recommended_songs = []
-        for song_id, score in scored:
-            song = song_map[song_id]
-            explanation_dict = build_explanation(
-                user_id=session_id,
-                song=song,
-                similar_user_ids=similar_users,
-                user_genre_profile=user_genre_profile,
-            )
-            recommended_songs.append(
-                RecommendedSong(
-                    song_id=song_id,
-                    title=song["title"],
-                    artist=song["artist"],
-                    genre=song["genre"],
-                    score=round(score, 3),
-                    preview_url=song.get("preview_url"),
-                    album_art_url=song.get("album_art_url"),
-                    explanation=Explanation(
-                        similar_users=explanation_dict["similar_users"],
-                        matched_features=MatchedFeatures(
-                            **explanation_dict["matched_features"]
-                        ),
-                        confidence=explanation_dict["confidence"],
-                    ),
+        with SessionLocal() as db:
+            for song_id, score in scored:
+                song = song_map[song_id]
+                explanation_dict = build_explanation(
+                    user_id=session_id,
+                    song=song,
+                    similar_user_ids=similar_users,
+                    user_genre_profile=user_genre_profile,
                 )
-            )
+                rec_id = uuid.uuid4()
+                
+                # Write recommendation to DB
+                import json
+                db.execute(
+                    text("""
+                        INSERT INTO recommendations (id, user_id, song_id, score, explanation, algorithm_version, served_at, interacted)
+                        VALUES (:id, :user_id, :song_id, :score, CAST(:explanation AS jsonb), :algo, NOW(), false)
+                    """),
+                    {
+                        "id": str(rec_id),
+                        "user_id": str(user_id),
+                        "song_id": song_id,
+                        "score": round(score, 3),
+                        "explanation": json.dumps(explanation_dict),
+                        "algo": "svd-v1"
+                    }
+                )
+                
+                recommended_songs.append(
+                    RecommendedSong(
+                        recommendation_id=str(rec_id),
+                        song_id=song_id,
+                        title=song["title"],
+                        artist=song["artist"],
+                        genre=song["genre"],
+                        score=round(score, 3),
+                        preview_url=song.get("preview_url"),
+                        album_art_url=song.get("album_art_url"),
+                        explanation=Explanation(
+                            similar_users=explanation_dict["similar_users"],
+                            matched_features=MatchedFeatures(
+                                **explanation_dict["matched_features"]
+                            ),
+                            confidence=explanation_dict["confidence"],
+                        ),
+                    )
+                )
+            db.commit()
 
         return RecommendationResponse(
             session_id=session_id,
@@ -262,32 +305,67 @@ class ModelService:
 
         return [row.session_id for row in rows]
 
-    def _build_cold_start_response(
+    async def _build_cold_start_response(
         self,
         session_id: str,
+        user_id: str,
         songs: list[dict],
     ) -> RecommendationResponse:
-        recommended = [
-            RecommendedSong(
-                song_id=s["id"],
-                title=s["title"],
-                artist=s["artist"],
-                genre=s["genre"],
-                score=s.get("popularity_score", 0.5),
-                preview_url=s.get("preview_url"),
-                album_art_url=s.get("album_art_url"),
-                explanation=Explanation(
-                    similar_users=[],
-                    matched_features=MatchedFeatures(
+        import uuid
+        import json
+        recommended = []
+        with SessionLocal() as db:
+            for s in songs:
+                rec_id = uuid.uuid4()
+                explanation_dict = {
+                    "similar_users": [],
+                    "matched_features": {
+                        "genre": s["genre"],
+                        "energy_level": s.get("energy_level", 0.5),
+                        "tempo": "Medium",
+                    },
+                    "confidence": s.get("popularity_score", 0.5),
+                }
+                
+                # Write cold start recommendation to DB
+                db.execute(
+                    text("""
+                        INSERT INTO recommendations (id, user_id, song_id, score, explanation, algorithm_version, served_at, interacted)
+                        VALUES (:id, :user_id, :song_id, :score, CAST(:explanation AS jsonb), :algo, NOW(), false)
+                    """),
+                    {
+                        "id": str(rec_id),
+                        "user_id": str(user_id),
+                        "song_id": s["id"],
+                        "score": s.get("popularity_score", 0.5),
+                        "explanation": json.dumps(explanation_dict),
+                        "algo": "svd-v1"
+                    }
+                )
+                
+                recommended.append(
+                    RecommendedSong(
+                        recommendation_id=str(rec_id),
+                        song_id=s["id"],
+                        title=s["title"],
+                        artist=s["artist"],
                         genre=s["genre"],
-                        energy_level=s.get("energy_level", 0.5),
-                        tempo="Medium",
-                    ),
-                    confidence=s.get("popularity_score", 0.5),
-                ),
-            )
-            for s in songs
-        ]
+                        score=s.get("popularity_score", 0.5),
+                        preview_url=s.get("preview_url"),
+                        album_art_url=s.get("album_art_url"),
+                        explanation=Explanation(
+                            similar_users=[],
+                            matched_features=MatchedFeatures(
+                                genre=s["genre"],
+                                energy_level=s.get("energy_level", 0.5),
+                                tempo="Medium",
+                            ),
+                            confidence=s.get("popularity_score", 0.5),
+                        ),
+                    )
+                )
+            db.commit()
+            
         return RecommendationResponse(
             session_id=session_id,
             recommendations=recommended,

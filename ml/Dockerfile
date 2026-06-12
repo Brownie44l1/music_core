@@ -11,11 +11,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Copy dependency file
-COPY pyproject.toml .
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
 
-# Install dependencies
-RUN uv pip install --system --no-cache -e .
+# Install dependencies (cache mount preserves uv cache across builds)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system -e .
 
 # Copy application code and model
 COPY app/ ./app/
