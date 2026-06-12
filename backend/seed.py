@@ -20,7 +20,7 @@ from sqlalchemy.orm import sessionmaker
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:password@localhost:5432/music_core",
+    "postgresql://postgres:password@localhost:5432/plugd",
 )
 
 # CSVs are co-located with this script inside the backend container (/app/)

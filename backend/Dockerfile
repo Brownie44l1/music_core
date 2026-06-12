@@ -2,9 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies (cache mount preserves uv cache across builds)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system -e .
+
+# Copy application code
 COPY app/ ./app/
 
 ENV PORT=8000
